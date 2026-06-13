@@ -32,16 +32,18 @@ fun JobSeekerProfileScreen(
     var pengalamanTahun by remember { mutableStateOf("0") }
     var lokasi by remember { mutableStateOf("") }
     var gajiHarapan by remember { mutableStateOf("") }
+    var isInitialized by remember { mutableStateOf(false) }
 
-    // Update state saat profil dimuat dari database
+    // Update state saat profil dimuat dari database (hanya sekali saat inisialisasi)
     LaunchedEffect(profile) {
-        profile?.let {
-            if (name.isEmpty()) name = it.name
-            if (pendidikan.isEmpty()) pendidikan = it.pendidikan ?: ""
-            if (keahlianStr.isEmpty()) keahlianStr = it.keahlian?.joinToString(", ") ?: ""
-            if (pengalamanTahun == "0") pengalamanTahun = it.pengalamanTahun?.toString() ?: "0"
-            if (lokasi.isEmpty()) lokasi = it.lokasi ?: ""
-            if (gajiHarapan.isEmpty()) gajiHarapan = it.gajiHarapan?.toString() ?: ""
+        if (profile != null && !isInitialized) {
+            name = profile!!.name
+            pendidikan = profile!!.pendidikan ?: ""
+            keahlianStr = profile!!.keahlian?.joinToString(", ") ?: ""
+            pengalamanTahun = profile!!.pengalamanTahun?.toString() ?: "0"
+            lokasi = profile!!.lokasi ?: ""
+            gajiHarapan = profile!!.gajiHarapan?.let { if (it == 0) "" else it.toString() } ?: ""
+            isInitialized = true
         }
     }
 
@@ -61,7 +63,9 @@ fun JobSeekerProfileScreen(
 
     ScrollableScreen(
         title = if (isEditMode) "Edit Profil" else "Lengkapi Profil",
-        onBackClick = { navController.popBackStack() }
+        onBackClick = { navController.popBackStack() },
+        isRefreshing = isLoading,
+        onRefresh = { viewModel.loadProfile() }
     ) {
         Column(
             modifier = Modifier
@@ -146,8 +150,8 @@ fun JobSeekerProfileScreen(
             Button(
                 onClick = {
                     val keahlianList = keahlianStr.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                    val tahun = pengalamanTahun.toIntOrNull() ?: 0
-                    val gaji = gajiHarapan.toIntOrNull() ?: 0
+                    val tahun = pengalamanTahun.filter { it.isDigit() }.toIntOrNull() ?: 0
+                    val gaji = gajiHarapan.filter { it.isDigit() }.toIntOrNull() ?: 0
                     viewModel.updateProfile(name, pendidikan, keahlianList, tahun, lokasi, gaji)
                 },
                 modifier = Modifier.fillMaxWidth(),

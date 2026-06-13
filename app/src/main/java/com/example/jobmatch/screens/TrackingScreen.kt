@@ -32,7 +32,9 @@ fun TrackingScreen(
 
     ScrollableScreen(
         title = "Status Lamaran Saya",
-        onBackClick = { navController.popBackStack() }
+        onBackClick = { navController.popBackStack() },
+        isRefreshing = isLoading,
+        onRefresh = { viewModel.loadMyLamaran() }
     ) {
         Box(
             modifier = Modifier

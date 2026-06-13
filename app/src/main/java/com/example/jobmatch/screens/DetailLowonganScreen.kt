@@ -45,7 +45,9 @@ fun DetailLowonganScreen(
 
     ScrollableScreen(
         title = "Detail Lowongan",
-        onBackClick = { navController.popBackStack() }
+        onBackClick = { navController.popBackStack() },
+        isRefreshing = isLoading,
+        onRefresh = { viewModel.loadLowonganById(lowonganId) }
     ) {
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {

@@ -44,7 +44,9 @@ fun CompanyLowonganListScreen(
 
     ScrollableScreen(
         title = "Lowongan Saya",
-        onBackClick = { navController.popBackStack() }
+        onBackClick = { navController.popBackStack() },
+        isRefreshing = isLoading,
+        onRefresh = { viewModel.loadAllLowongan() }
     ) {
         Column(
             modifier = Modifier

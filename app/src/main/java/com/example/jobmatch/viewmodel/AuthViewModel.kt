@@ -43,6 +43,7 @@ class AuthViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             _loginSuccess.value = null
+            _error.value = null // Bersihkan error sebelum mencoba login
             val result = authRepo.login(email, password)
             if (result.isFailure) {
                 _error.value = result.exceptionOrNull()?.message

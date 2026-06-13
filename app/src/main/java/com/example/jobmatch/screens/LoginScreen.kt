@@ -3,12 +3,18 @@ package com.example.jobmatch.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -25,13 +31,24 @@ fun LoginScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+
     val isLoading by authViewModel.isLoading.collectAsState()
     val error by authViewModel.error.collectAsState()
     val loginSuccess by authViewModel.loginSuccess.collectAsState()
 
+    var localError by remember { mutableStateOf<String?>(null) }
+
+    // Bersihkan error saat pertama kali masuk atau saat user mengetik
+    LaunchedEffect(Unit) {
+        authViewModel.clearError()
+        localError = null
+    }
+
     // Navigasi ketika login berhasil (loginSuccess tidak null)
     LaunchedEffect(loginSuccess) {
         if (loginSuccess != null) {
+            localError = null
             val (role, _) = loginSuccess!!
             when (role) {
                 UserRole.JOBSEEKER -> navController.navigate(Screen.HomeJobseeker.route) {
@@ -57,6 +74,7 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        // ... (Logo dan Header)
         Surface(
             color = MaterialTheme.colorScheme.primaryContainer,
             shape = MaterialTheme.shapes.extraLarge,
@@ -90,23 +108,40 @@ fun LoginScreen(
 
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it.trim() },
+            onValueChange = { 
+                email = it
+                localError = null
+                if (error != null) authViewModel.clearError() 
+            },
             label = { Text("Email") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             enabled = !isLoading,
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.shapes.medium,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
         )
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = { 
+                password = it
+                localError = null
+                if (error != null) authViewModel.clearError()
+            },
             label = { Text("Password") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             enabled = !isLoading,
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.shapes.medium,
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            trailingIcon = {
+                val image = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(imageVector = image, contentDescription = null)
+                }
+            }
         )
         
         Spacer(modifier = Modifier.height(8.dp))
@@ -121,7 +156,13 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = { authViewModel.login(email.trim(), password) },
+            onClick = { 
+                if (email.isBlank() || password.isBlank()) {
+                    localError = "Email dan password tidak boleh kosong"
+                } else {
+                    authViewModel.login(email.trim(), password)
+                }
+            },
             modifier = Modifier.fillMaxWidth().height(56.dp),
             enabled = !isLoading,
             shape = MaterialTheme.shapes.medium
@@ -139,13 +180,14 @@ fun LoginScreen(
             Text("Belum punya akun? Daftar Sekarang")
         }
 
-        if (error != null) {
+        val displayError = localError ?: error
+        if (displayError != null) {
             Spacer(modifier = Modifier.height(16.dp))
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
             ) {
                 Text(
-                    error!!, 
+                    displayError, 
                     color = MaterialTheme.colorScheme.onErrorContainer,
                     modifier = Modifier.padding(12.dp),
                     style = MaterialTheme.typography.bodySmall

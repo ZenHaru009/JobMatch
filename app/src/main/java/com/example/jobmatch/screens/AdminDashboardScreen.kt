@@ -52,7 +52,9 @@ fun AdminDashboardScreen(
 
     ScrollableScreen(
         title = "Verifikasi Perusahaan",
-        showBackButton = false
+        showBackButton = false,
+        isRefreshing = isLoading,
+        onRefresh = { adminViewModel.loadPendingCompanies() }
     ) {
         Column(
             modifier = Modifier
@@ -194,10 +196,10 @@ fun AdminDashboardScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             OutlinedButton(
-                onClick = {
+                onClick = { 
                     authViewModel.logout()
                     navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.AdminDashboard.route) { inclusive = true }
+                        popUpTo(0) { inclusive = true }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),

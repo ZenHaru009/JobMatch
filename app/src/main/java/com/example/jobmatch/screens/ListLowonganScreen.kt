@@ -53,12 +53,14 @@ fun ListLowonganScreen(
     val uniquePendidikan = remember(allLowongan) { allLowongan.map { it.pendidikanMin }.distinct() }
 
     LaunchedEffect(Unit) {
-        viewModel.loadAllLowongan()
+        viewModel.loadAllLowongan(onlyVerified = true)
     }
 
     ScrollableScreen(
         title = "Daftar Lowongan",
-        onBackClick = { navController.popBackStack() }
+        onBackClick = { navController.popBackStack() },
+        isRefreshing = isLoading,
+        onRefresh = { viewModel.loadAllLowongan(onlyVerified = true) }
     ) {
         Column(
             modifier = Modifier

@@ -7,11 +7,17 @@ import android.net.Uri
 import android.util.Base64
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -19,6 +25,7 @@ import androidx.navigation.NavController
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import com.example.jobmatch.model.LamaranStatus
 import com.example.jobmatch.viewmodel.CompanyLamaranDetailViewModel
+import kotlinx.coroutines.launch
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,6 +38,7 @@ fun CompanyLamaranDetailScreen(
 ) {
     val context = LocalContext.current
     val lamaran by viewModel.lamaran.collectAsState()
+    val matchScore by viewModel.matchScore.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     val updateSuccess by viewModel.updateSuccess.collectAsState()
@@ -46,104 +54,132 @@ fun CompanyLamaranDetailScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Detail Lamaran") }) }
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("Detail Lamaran", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)) },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
     ) { padding ->
-        when {
-            isLoading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            }
-            error != null -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Error: $error", color = MaterialTheme.colorScheme.error)
-                }
-            }
-            lamaran == null -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Lamaran tidak ditemukan")
-                }
-            }
-            else -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .padding(16.dp)
-                ) {
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Nama Pelamar: ${lamaran!!.userName}", style = MaterialTheme.typography.titleLarge)
-                            Text("Nomor HP: ${lamaran!!.noHp ?: "Tidak diisi"}")   // <-- TAMBAHAN
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text("Lowongan ID: ${lamaran!!.lowonganId}")
-                            Text("Tanggal Lamaran: ${formatDate(lamaran!!.tanggalLamaran)}")
-                            Text("Status: ${lamaran!!.status.name}")
-                        }
+        val coroutineScope = rememberCoroutineScope()
+        PullToRefreshBox(
+            isRefreshing = isLoading,
+            onRefresh = { coroutineScope.launch { viewModel.loadLamaran(lamaranId) } },
+            modifier = Modifier.padding(padding).fillMaxSize()
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                if (error != null) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Error: $error", color = MaterialTheme.colorScheme.error)
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    if (!lamaran!!.cvBase64.isNullOrEmpty()) {
-                        Button(
-                            onClick = {
-                                openBase64Pdf(context, lamaran!!.cvBase64!!, "CV_${lamaran!!.userName}.pdf")
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Lihat CV")
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
+                } else if (lamaran == null) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Lamaran tidak ditemukan")
                     }
-
-                    Text("Ubah Status Lamaran", style = MaterialTheme.typography.titleMedium)
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    var expanded by remember { mutableStateOf(false) }
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = it }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
                     ) {
-                        OutlinedTextField(
-                            value = selectedStatus.name,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Status") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor()
-                        )
-                        ExposedDropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            LamaranStatus.values().forEach { status ->
-                                DropdownMenuItem(
-                                    text = { Text(status.name) },
-                                    onClick = {
-                                        selectedStatus = status
-                                        expanded = false
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Nama Pelamar: ${lamaran!!.userName}", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.secondaryContainer,
+                                        shape = MaterialTheme.shapes.small
+                                    ) {
+                                        Text(
+                                            text = "${(matchScore * 100).toInt()}% Match",
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
                                     }
-                                )
+                                }
+                                Text("Nomor HP: ${lamaran!!.noHp ?: "Tidak diisi"}")
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("Lowongan ID: ${lamaran!!.lowonganId}")
+                                Text("Tanggal Lamaran: ${formatDate(lamaran!!.tanggalLamaran)}")
+                                Text("Status: ${lamaran!!.status.name}")
                             }
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    Button(
-                        onClick = { viewModel.updateStatusLamaran(lamaran!!.id, selectedStatus) },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isLoading
-                    ) {
-                        if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                        else Text("Simpan Perubahan Status")
-                    }
+                        if (!lamaran!!.cvBase64.isNullOrEmpty()) {
+                            Button(
+                                onClick = {
+                                    openBase64Pdf(context, lamaran!!.cvBase64!!, "CV_${lamaran!!.userName}.pdf")
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Lihat CV")
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
 
-                    if (updateSuccess) {
+                        Text("Ubah Status Lamaran", style = MaterialTheme.typography.titleMedium)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("Status berhasil diperbarui!", color = MaterialTheme.colorScheme.primary)
+
+                        var expanded by remember { mutableStateOf(false) }
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = it }
+                        ) {
+                            OutlinedTextField(
+                                value = selectedStatus.name,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Status") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                LamaranStatus.values().forEach { status ->
+                                    DropdownMenuItem(
+                                        text = { Text(status.name) },
+                                        onClick = {
+                                            selectedStatus = status
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = { viewModel.updateStatusLamaran(lamaran!!.id, selectedStatus) },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isLoading
+                        ) {
+                            if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                            else Text("Simpan Perubahan Status")
+                        }
+
+                        if (updateSuccess) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Status berhasil diperbarui!", color = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
             }

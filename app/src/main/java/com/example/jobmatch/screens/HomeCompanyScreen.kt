@@ -10,20 +10,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavController
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.jobmatch.navigation.Screen
 import com.example.jobmatch.ui.theme.ScrollableScreen
+import com.example.jobmatch.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeCompanyScreen(
     navController: NavController,
-    windowSizeClass: WindowSizeClass
+    windowSizeClass: WindowSizeClass,
+    authViewModel: AuthViewModel = viewModel()
 ) {
     ScrollableScreen(
         title = "JobMatch - Perusahaan",
@@ -99,9 +101,10 @@ fun HomeCompanyScreen(
 
             // Tombol Logout
             OutlinedButton(
-                onClick = {
+                onClick = { 
+                    authViewModel.logout()
                     navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.HomeCompany.route) { inclusive = true }
+                        popUpTo(0) { inclusive = true }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),

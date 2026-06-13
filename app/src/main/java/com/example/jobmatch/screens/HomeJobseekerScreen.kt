@@ -49,7 +49,13 @@ fun HomeJobseekerScreen(
 
     ScrollableScreen(
         title = "JobMatch - Pelamar",
-        showBackButton = false // Matikan tombol kembali di Beranda
+        showBackButton = false, // Matikan tombol kembali di Beranda
+        isRefreshing = isLoading,
+        onRefresh = { 
+            if (currentUser?.profileCompleted == true) {
+                recommendationViewModel.loadRecommendations() 
+            }
+        }
     ) {
         Column(
             modifier = Modifier
@@ -205,8 +211,9 @@ fun HomeJobseekerScreen(
 
             OutlinedButton(
                 onClick = {
+                    authViewModel.logout()
                     navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.HomeJobseeker.route) { inclusive = true }
+                        popUpTo(0) { inclusive = true }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),

@@ -10,9 +10,14 @@ import kotlinx.coroutines.tasks.await
 class LowonganRepository {
     private val firestore = FirebaseFirestore.getInstance()
 
-    suspend fun getAllLowongan(): List<Lowongan> {
+    suspend fun getAllLowongan(onlyVerified: Boolean = false): List<Lowongan> {
         return try {
-            val snapshot = firestore.collection("lowongan").get().await()
+            val query = if (onlyVerified) {
+                firestore.collection("lowongan").whereEqualTo("companyVerified", true)
+            } else {
+                firestore.collection("lowongan")
+            }
+            val snapshot = query.get().await()
             snapshot.documents.mapNotNull { doc ->
                 doc.toObject(Lowongan::class.java)?.copy(id = doc.id)
             }
@@ -62,7 +67,7 @@ class LowonganRepository {
         if (jobseeker == null || jobseeker.role != UserRole.JOBSEEKER) {
             return emptyList()
         }
-        val allLowongan = getAllLowongan()
+        val allLowongan = getAllLowongan(onlyVerified = true)
         val scored = allLowongan.mapNotNull { lowongan ->
             val score = SawCalculator.calculateScore(jobseeker, lowongan)
             if (score > 0) lowongan to score else null

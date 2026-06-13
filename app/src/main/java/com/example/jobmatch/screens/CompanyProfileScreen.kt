@@ -118,7 +118,9 @@ fun CompanyProfileScreen(
 
     ScrollableScreen(
         title = "Profil Perusahaan",
-        onBackClick = { navController.popBackStack() }
+        onBackClick = { navController.popBackStack() },
+        isRefreshing = isLoading,
+        onRefresh = { viewModel.loadCompanyProfile() }
     ) {
         Column(
             modifier = Modifier

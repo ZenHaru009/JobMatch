@@ -44,11 +44,11 @@ class LowonganViewModel : ViewModel() {
     }
     // ========== AKHIR TAMBAHAN ==========
 
-    fun loadAllLowongan() {
+    fun loadAllLowongan(onlyVerified: Boolean = false) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val list = repository.getAllLowongan()
+                val list = repository.getAllLowongan(onlyVerified)
                 _lowonganList.value = list
             } catch (e: Exception) {
                 _error.value = e.message

@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.FirebaseFirestore
 import com.example.jobmatch.model.Lamaran
 import com.example.jobmatch.model.LamaranStatus
+import com.example.jobmatch.model.Lowongan
+import com.example.jobmatch.model.User
+import com.example.jobmatch.utils.SawCalculator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,6 +19,9 @@ class CompanyLamaranDetailViewModel : ViewModel() {
 
     private val _lamaran = MutableStateFlow<Lamaran?>(null)
     val lamaran: StateFlow<Lamaran?> = _lamaran.asStateFlow()
+
+    private val _matchScore = MutableStateFlow(0.0)
+    val matchScore: StateFlow<Double> = _matchScore.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -30,7 +36,21 @@ class CompanyLamaranDetailViewModel : ViewModel() {
         _isLoading.value = true
         try {
             val doc = firestore.collection("lamaran").document(lamaranId).get().await()
-            _lamaran.value = doc.toObject(Lamaran::class.java)?.copy(id = doc.id)
+            val lamaranObj = doc.toObject(Lamaran::class.java)?.copy(id = doc.id)
+            _lamaran.value = lamaranObj
+            
+            if (lamaranObj != null) {
+                // Fetch user and lowongan to calculate SAW score
+                val userDoc = firestore.collection("users").document(lamaranObj.userId).get().await()
+                val user = userDoc.toObject(User::class.java)
+                
+                val lowonganDoc = firestore.collection("lowongan").document(lamaranObj.lowonganId).get().await()
+                val lowongan = lowonganDoc.toObject(Lowongan::class.java)
+                
+                if (user != null && lowongan != null) {
+                    _matchScore.value = SawCalculator.calculateScore(user, lowongan)
+                }
+            }
         } catch (e: Exception) {
             _error.value = e.message
         } finally {
